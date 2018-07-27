@@ -5,5 +5,8 @@ else
     using Test
 end
 
-# write your own tests here
-@test 1 == 2
+import RLEnvClassicControl: reset!, interact!, getstate
+env = AtariEnv("pong")
+reset!(env)
+@test typeof(interact!(1, env)) == Tuple{Array{UInt8, 1}, Int32, Bool}
+@test typeof(getstate(env)) == Tuple{Array{UInt8, 1}, Bool}
