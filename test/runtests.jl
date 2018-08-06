@@ -5,7 +5,7 @@ else
     using Test
 end
 
-import RLEnvClassicControl: reset!, interact!, getstate
+import RLEnvAtari: reset!, interact!, getstate
 env = AtariEnv("pong")
 reset!(env)
 @test typeof(interact!(1, env)) == Tuple{Array{UInt8, 1}, Int32, Bool}
