@@ -1,6 +1,6 @@
 # RLEnvAtari
 
-[![Build Status](https://travis-ci.org/JuliaReinforcementLearning/RLEnvAtari.jl.svg?branch=master)](https://travis-ci.org/JuliaReinforcementLearning/RLEnvAtari.jl)
+[![Build Status](https://travis-ci.com/JuliaReinforcementLearning/RLEnvAtari.jl.svg?branch=master)](https://travis-ci.com/JuliaReinforcementLearning/RLEnvAtari.jl)
 
 [![Coverage Status](https://coveralls.io/repos/JuliaReinforcementLearning/RLEnvAtari.jl/badge.svg?branch=master&service=github)](https://coveralls.io/github/JuliaReinforcementLearning/RLEnvAtari.jl?branch=master)
 
