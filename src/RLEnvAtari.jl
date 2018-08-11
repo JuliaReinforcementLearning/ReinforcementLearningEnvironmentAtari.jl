@@ -3,8 +3,10 @@ module RLEnvAtari
 using ArcadeLearningEnvironment, Parameters, Reexport
 import ArcadeLearningEnvironment.getScreen
 import ImageTransformations: imresize
+using ImageView, Images, Gtk.ShortNames
 @reexport using ReinforcementLearning
-import ReinforcementLearning: interact!, getstate, reset!, preprocessstate 
+import ReinforcementLearning: interact!, getstate, reset!, preprocessstate,
+plotenv 
 
 """
     AtariEnv
@@ -72,7 +74,8 @@ end
 function reset!(env::AtariEnv)
     reset_game(env.ale)
     for _ in 1:rand(0:env.noopmax) act(env.ale, Int32(0)) end
-    nothing
+    env.getscreen(env.ale, env.screen)
+    env.screen
 end
 
 """
@@ -124,4 +127,23 @@ function preprocessstate(p::AtariPreprocessor, ::Void)
     end
 end
 
+mutable struct Viewer
+    win
+    canvases
+    grid
+    show
+end
+const viewer = Viewer(0, 0, 0, false)
+function plotenv(env::AtariEnv, s, a, r, d)
+    if !viewer.show
+        viewer.grid, frames, viewer.canvases = canvasgrid((1,1))  # 1 row, 2 columns
+        viewer.win = Window(viewer.grid)
+        showall(viewer.win)
+        viewer.show = true
+    end
+    x = zeros(UInt8, 3 * 160 * 210)
+    getScreenRGB(env.ale, x)
+    imshow(viewer.canvases[1,1], 
+           permuteddimsview(colorview(RGB, reshape(x/255, 3, 160, 210)), (2, 1)))
+end
 end # module
