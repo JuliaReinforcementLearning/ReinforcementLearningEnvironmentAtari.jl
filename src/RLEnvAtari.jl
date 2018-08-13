@@ -1,24 +1,24 @@
 __precompile__()
 module RLEnvAtari
-using ArcadeLearningEnvironment, Parameters, Reexport
-import ArcadeLearningEnvironment.getScreen
-import ImageTransformations: imresize
-using ImageView, Images, Gtk.ShortNames
+using ArcadeLearningEnvironment, Parameters, Reexport, GR, Compat
+import Compat: Nothing
+import ArcadeLearningEnvironment: getScreen
 @reexport using ReinforcementLearning
 import ReinforcementLearning: interact!, getstate, reset!, preprocessstate,
 plotenv 
 
 """
     AtariEnv
-        ale::Ptr{Void}
+            ale::Ptr{Nothing}
         screen::Array{UInt8, 1}
         getscreen::Function
         noopmax::Int64
 """
 struct AtariEnv
-    ale::Ptr{Void}
+    ale::Ptr{Nothing}
     screen::Array{UInt8, 1}
     getscreen::Function
+    actions::Array{Int32, 1}
     noopmax::Int64
 end
 export AtariEnv
@@ -35,6 +35,7 @@ function AtariEnv(name;
                   colorspace = "Grayscale",
                   frame_skip = 4, noopmax = 20,
                   color_averaging = true,
+                  actionset = :minimal,
                   repeat_action_probability = 0.)
     ale = ALE_new()
     loadROM(ale, name)
@@ -43,16 +44,19 @@ function AtariEnv(name;
     setFloat(ale, "repeat_action_probability", 
              Float32(repeat_action_probability))
     if colorspace == "Grayscale"
-        screen = Array{Cuchar}(210*160)
+        screen = Array{Cuchar}(undef, 210*160)
         getscreen = getScreenGrayscale
     elseif colorspace == "RGB"
-        screen = Array{Cuchar}(3*210*160)
+        screen = Array{Cuchar}(undef, 3*210*160)
         getscreen = getScreenRGB
     elseif colorspace == "Raw"
-        screen = Array{Cuchar}(210*160)
+        screen = Array{Cuchar}(undef, 210*160)
         getscreen = getScreen
     end
-    AtariEnv(ale, screen, getscreen, noopmax)
+    AtariEnv(ale, screen, getscreen, 
+             actionset == :minimal ? getMinimalActionSet(ale) : 
+                                     getLegalActionSet(ale),
+             noopmax)
 end
 
 function getScreen(p::Ptr, s::Array{Cuchar, 1})
@@ -63,7 +67,7 @@ function getScreen(p::Ptr, s::Array{Cuchar, 1})
 end
 
 function interact!(a, env::AtariEnv)
-    r = act(env.ale, Int32(a - 1))
+    r = act(env.ale, env.actions[a])
     env.getscreen(env.ale, env.screen)
     env.screen, r, game_over(env.ale)
 end
@@ -79,71 +83,49 @@ function reset!(env::AtariEnv)
 end
 
 """
-    struct AtariPreprocessor
-        gpu::Bool = false
-        croptosquare::Bool = false
-        cropfromrow::Int64 = 34
-        dimx::Int64 = 80
-        dimy::Int64 = croptosquare ? 80 : 105
-        scale::Bool = false
-        inputtype::DataType = scale ? Float32 : UInt8
+AtariPreprocessor(; gpu = false, croptosquare = false,
+                    cropfromrow = 34, color = false,
+                    outdim = (80, croptosquare ? 80 : 105))
 """
-@with_kw struct AtariPreprocessor
-    gpu::Bool = false
-    croptosquare::Bool = false
-    cropfromrow::Int64 = 34
-    dimx::Int64 = 80
-    dimy::Int64 = croptosquare ? 80 : 105
-    scale::Bool = false
-    inputtype::DataType = scale ? Float32 : UInt8
+function AtariPreprocessor(; gpu = false, croptosquare = false,
+                             cropfromrow = 34, color = false,
+                             outdim = (80, croptosquare ? 80 : 105))
+    chain = []
+    if croptosquare
+        push!(chain, ImageCrop(1:160, cropfromrow:cropfromrow + 159))
+    end
+    if !((croptosquare && outdim == (160, 160)) || outdim == (160, 210))
+        push!(chain, ImageResizeNearestNeighbour(outdim))
+    end
+    if !color
+        push!(chain, x -> reshape(x, (outdim[1], outdim[2], 1)))
+    end
+    if gpu
+        push!(chain, togpu)
+    end
+    ImagePreprocessor(color ? (3, 160, 210) : (160, 210), chain)
 end
 export AtariPreprocessor
-togpu(x) = CuArrays.adapt(CuArray, x)
-function preprocessstate(p::AtariPreprocessor, s)
-    if p.croptosquare
-        tmp = reshape(s, 160, 210)[:,p.cropfromrow:p.cropfromrow + 159]
-        small = reshape(imresize(tmp, p.dimx, p.dimy), p.dimx, p.dimy, 1)
-    else
-        small = reshape(imresize(reshape(s, 160, 210), p.dimx, p.dimy), 
-                        p.dimx, p.dimy, 1)
-    end
-    if p.scale
-        scale!(small, 1/255)
-    else
-        small = ceil.(p.inputtype, small)
-    end
-    if p.gpu
-        togpu(small)
-    else
-        p.inputtype.(small)
-    end
-end
-function preprocessstate(p::AtariPreprocessor, ::Void)
-    s = zeros(p.inputtype, p.dimx, p.dimy, 1)
-    if p.gpu
-        togpu(s)
-    else
-        s
-    end
-end
 
-mutable struct Viewer
-    win
-    canvases
-    grid
-    show
-end
-const viewer = Viewer(0, 0, 0, false)
-function plotenv(env::AtariEnv, s, a, r, d)
-    if !viewer.show
-        viewer.grid, frames, viewer.canvases = canvasgrid((1,1))  # 1 row, 2 columns
-        viewer.win = Window(viewer.grid)
-        showall(viewer.win)
-        viewer.show = true
+imshowgrey(x::Array{UInt8, 2}) = imshowgrey(x[:], size(x))
+imshowgrey(x::Array{UInt8, 1}, dims) = imshow(reshape(x, dims), colormap = 2)
+imshowcolor(x::Array{UInt8, 3}) = imshowcolor(x[:], size(x))
+function imshowcolor(x::Array{UInt8, 1}, dims)
+    clearws()
+    setviewport(0, dims[1]/dims[2], 0, 1)
+    setwindow(0, 1, 0, 1)
+    y = (zeros(UInt32, dims...) .+ 0xff) .<< 24
+    img = UInt32.(x)
+    @simd for i in 1:length(y)
+        @inbounds y[i] += img[3*(i-1) + 1] + img[3*(i-1) + 2] << 8 + img[3*i] << 16
     end
+    drawimage(0, 1, 0, 1, dims..., y)
+    updatews()
+end
+function plotenv(env::AtariEnv, s, a, r, d)
     x = zeros(UInt8, 3 * 160 * 210)
     getScreenRGB(env.ale, x)
-    imshow(viewer.canvases[1,1], 
-           permuteddimsview(colorview(RGB, reshape(x/255, 3, 160, 210)), (2, 1)))
+    imshowcolor(x, (160, 210))
 end
+
 end # module
