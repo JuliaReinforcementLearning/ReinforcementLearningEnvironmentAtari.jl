@@ -1,5 +1,5 @@
 __precompile__()
-module RLEnvAtari
+module ReinforcementLearningEnvironmentAtari
 using ArcadeLearningEnvironment, Parameters, Reexport, GR, Compat
 import Compat: Nothing
 import ArcadeLearningEnvironment: getScreen

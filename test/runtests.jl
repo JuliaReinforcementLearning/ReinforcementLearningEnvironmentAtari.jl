@@ -1,11 +1,11 @@
-using RLEnvAtari
+using ReinforcementLearningEnvironmentAtari
 @static if VERSION < v"0.7.0-DEV.2005"
     using Base.Test
 else
     using Test
 end
 
-import RLEnvAtari: reset!, interact!, getstate
+import ReinforcementLearningEnvironmentAtari: reset!, interact!, getstate
 env = AtariEnv("pong")
 reset!(env)
 @test typeof(interact!(1, env)) == Tuple{Array{UInt8, 1}, Int32, Bool}

@@ -1,4 +1,4 @@
-using RLEnvAtari, Flux, GR, JLD2
+using ReinforcementLearningEnvironmentAtari, Flux, GR, JLD2
 using Compat: @info
 const withgpu = true
 const game = "alien"

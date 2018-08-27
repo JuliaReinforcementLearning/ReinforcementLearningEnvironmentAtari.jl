@@ -1,4 +1,4 @@
-The RLEnvAtari.jl package is licensed under the MIT "Expat" License:
+The ReinforcementLearningEnvironmentAtari.jl package is licensed under the MIT "Expat" License:
 
 > Copyright (c) 2018: Johanni Brea.
 >
