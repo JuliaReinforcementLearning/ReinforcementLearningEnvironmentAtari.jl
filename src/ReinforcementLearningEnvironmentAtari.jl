@@ -1,27 +1,23 @@
-__precompile__()
 module ReinforcementLearningEnvironmentAtari
-using ArcadeLearningEnvironment, Parameters, Reexport, GR, Compat
-import Compat: Nothing
-import ArcadeLearningEnvironment: getScreen
-@reexport using ReinforcementLearning
-import ReinforcementLearning: interact!, getstate, reset!, preprocessstate,
-plotenv 
 
-"""
-    AtariEnv
-            ale::Ptr{Nothing}
-        screen::Array{UInt8, 1}
-        getscreen::Function
-        noopmax::Int64
-"""
-struct AtariEnv
+using ArcadeLearningEnvironment, GR
+import ArcadeLearningEnvironment: getScreen
+import ReinforcementLearningBase: AbstractEnv, DiscreteSpace,
+       interact!, getstate, reset!, plotenv, actionspace, sample
+export AtariEnv,
+       interact!, getstate, reset!, plotenv, actionspace, sample
+
+struct AtariEnv <: AbstractEnv
     ale::Ptr{Nothing}
     screen::Array{UInt8, 1}
     getscreen::Function
     actions::Array{Int32, 1}
+    actionspace::DiscreteSpace
     noopmax::Int64
 end
-export AtariEnv
+
+actionspace(env::AtariEnv) = env.actionspace
+
 """
     AtariEnv(name; colorspace = "Grayscale", frame_skip = 4, noopmax = 20,
                    color_averaging = true, repeat_action_probability = 0.)
@@ -53,10 +49,9 @@ function AtariEnv(name;
         screen = Array{Cuchar}(undef, 210*160)
         getscreen = getScreen
     end
-    AtariEnv(ale, screen, getscreen, 
-             actionset == :minimal ? getMinimalActionSet(ale) : 
-                                     getLegalActionSet(ale),
-             noopmax)
+    actions = actionset == :minimal ? getMinimalActionSet(ale) : getLegalActionSet(ale)
+    actionspace = DiscreteSpace(length(actions), 1)
+    AtariEnv(ale, screen, getscreen, actions, actionspace, noopmax)
 end
 
 function getScreen(p::Ptr, s::Array{Cuchar, 1})
@@ -66,15 +61,17 @@ function getScreen(p::Ptr, s::Array{Cuchar, 1})
     end
 end
 
-function interact!(a, env::AtariEnv)
+function interact!(env::AtariEnv, a)
     r = act(env.ale, env.actions[a])
     env.getscreen(env.ale, env.screen)
     env.screen, r, game_over(env.ale)
 end
+
 function getstate(env::AtariEnv)
     env.getscreen(env.ale, env.screen)
     env.screen, game_over(env.ale)
 end
+
 function reset!(env::AtariEnv)
     reset_game(env.ale)
     for _ in 1:rand(0:env.noopmax) act(env.ale, Int32(0)) end
@@ -110,6 +107,7 @@ export AtariPreprocessor
 imshowgrey(x::Array{UInt8, 2}) = imshowgrey(x[:], size(x))
 imshowgrey(x::Array{UInt8, 1}, dims) = imshow(reshape(x, dims), colormap = 2)
 imshowcolor(x::Array{UInt8, 3}) = imshowcolor(x[:], size(x))
+
 function imshowcolor(x::Array{UInt8, 1}, dims)
     clearws()
     setviewport(0, dims[1]/dims[2], 0, 1)
@@ -122,7 +120,8 @@ function imshowcolor(x::Array{UInt8, 1}, dims)
     drawimage(0, 1, 0, 1, dims..., y)
     updatews()
 end
-function plotenv(env::AtariEnv, s, a, r, d)
+
+function plotenv(env::AtariEnv)
     x = zeros(UInt8, 3 * 160 * 210)
     getScreenRGB(env.ale, x)
     imshowcolor(x, (160, 210))
