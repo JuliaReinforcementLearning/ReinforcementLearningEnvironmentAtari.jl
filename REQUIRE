@@ -1,7 +1,4 @@
-julia 0.6
+julia 1.0
 GR
-Compat
 ArcadeLearningEnvironment
-ReinforcementLearning
-Parameters
-Reexport
+ReinforcementLearningBase
