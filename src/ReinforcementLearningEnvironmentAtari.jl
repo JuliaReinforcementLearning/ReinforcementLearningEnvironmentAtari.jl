@@ -64,19 +64,19 @@ end
 function interact!(env::AtariEnv, a)
     r = act(env.ale, env.actions[a])
     env.getscreen(env.ale, env.screen)
-    env.screen, r, game_over(env.ale)
+    (observation=env.screen, reward=r, isdone=game_over(env.ale))
 end
 
 function getstate(env::AtariEnv)
     env.getscreen(env.ale, env.screen)
-    env.screen, game_over(env.ale)
+    (observation=env.screen, isdone=game_over(env.ale))
 end
 
 function reset!(env::AtariEnv)
     reset_game(env.ale)
     for _ in 1:rand(0:env.noopmax) act(env.ale, Int32(0)) end
     env.getscreen(env.ale, env.screen)
-    env.screen
+    (observation=env.screen,)
 end
 
 """
