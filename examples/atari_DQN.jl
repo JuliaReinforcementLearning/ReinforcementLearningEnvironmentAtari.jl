@@ -1,8 +1,32 @@
-using ReinforcementLearningEnvironmentAtari, Flux, GR, JLD2
-using Compat: @info
-const withgpu = true
+using ReinforcementLearningEnvironmentAtari, Flux, GR, JLD2,
+ReinforcementLearning
+const withgpu = false
 const game = "alien"
 const gpudevice = 1
+
+"""
+AtariPreprocessor(; gpu = false, croptosquare = false,
+                    cropfromrow = 34, color = false,
+                    outdim = (80, croptosquare ? 80 : 105))
+"""
+function AtariPreprocessor(; gpu = false, croptosquare = false,
+                             cropfromrow = 34, color = false,
+                             outdim = (80, croptosquare ? 80 : 105))
+    chain = []
+    if croptosquare
+        push!(chain, ImageCrop(1:160, cropfromrow:cropfromrow + 159))
+    end
+    if !((croptosquare && outdim == (160, 160)) || outdim == (160, 210))
+        push!(chain, ImageResizeNearestNeighbour(outdim))
+    end
+    if !color
+        push!(chain, x -> reshape(x, (outdim[1], outdim[2], 1)))
+    end
+    if gpu
+        push!(chain, togpu)
+    end
+    ImagePreprocessor(color ? (3, 160, 210) : (160, 210), chain)
+end
 
 if withgpu 
     using CUDAnative

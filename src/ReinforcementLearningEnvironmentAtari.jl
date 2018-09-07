@@ -4,8 +4,6 @@ using ArcadeLearningEnvironment, GR
 import ArcadeLearningEnvironment: getScreen
 import ReinforcementLearningBase: AbstractEnv, DiscreteSpace,
        interact!, getstate, reset!, plotenv, actionspace, sample
-export AtariEnv,
-       interact!, getstate, reset!, plotenv, actionspace, sample
 
 struct AtariEnv <: AbstractEnv
     ale::Ptr{Nothing}
@@ -79,30 +77,6 @@ function reset!(env::AtariEnv)
     (observation=env.screen,)
 end
 
-"""
-AtariPreprocessor(; gpu = false, croptosquare = false,
-                    cropfromrow = 34, color = false,
-                    outdim = (80, croptosquare ? 80 : 105))
-"""
-function AtariPreprocessor(; gpu = false, croptosquare = false,
-                             cropfromrow = 34, color = false,
-                             outdim = (80, croptosquare ? 80 : 105))
-    chain = []
-    if croptosquare
-        push!(chain, ImageCrop(1:160, cropfromrow:cropfromrow + 159))
-    end
-    if !((croptosquare && outdim == (160, 160)) || outdim == (160, 210))
-        push!(chain, ImageResizeNearestNeighbour(outdim))
-    end
-    if !color
-        push!(chain, x -> reshape(x, (outdim[1], outdim[2], 1)))
-    end
-    if gpu
-        push!(chain, togpu)
-    end
-    ImagePreprocessor(color ? (3, 160, 210) : (160, 210), chain)
-end
-export AtariPreprocessor
 
 imshowgrey(x::Array{UInt8, 2}) = imshowgrey(x[:], size(x))
 imshowgrey(x::Array{UInt8, 1}, dims) = imshow(reshape(x, dims), colormap = 2)
@@ -127,4 +101,5 @@ function plotenv(env::AtariEnv)
     imshowcolor(x, (160, 210))
 end
 
+export AtariEnv
 end # module
