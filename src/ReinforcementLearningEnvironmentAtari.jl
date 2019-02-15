@@ -25,18 +25,18 @@ Returns an AtariEnv that can be used in an RLSetup of the
 package. Check the deps/roms folder of the ArcadeLearningEnvironment package to
 see all available `name`s.
 """
-function AtariEnv(name; 
+function AtariEnv(name;
                   colorspace = "Grayscale",
                   frame_skip = 4, noopmax = 20,
                   color_averaging = true,
                   actionset = :minimal,
                   repeat_action_probability = 0.)
     ale = ALE_new()
-    loadROM(ale, name)
     setBool(ale, "color_averaging", color_averaging)
     setInt(ale, "frame_skip", Int32(frame_skip))
-    setFloat(ale, "repeat_action_probability", 
+    setFloat(ale, "repeat_action_probability",
              Float32(repeat_action_probability))
+    loadROM(ale, name)
     if colorspace == "Grayscale"
         screen = Array{Cuchar}(undef, 210*160)
         getscreen = getScreenGrayscale
