@@ -1,4 +1,4 @@
-# ReinforcementLearningEnvironmentAtari
+# DEPRECATED! PLEASE USE [ReinforcementLearningEnvironments.jl](https://github.com/JuliaReinforcementLearning/ReinforcementLearningEnvironments.jl)
 
 [![Build Status](https://travis-ci.com/JuliaReinforcementLearning/ReinforcementLearningEnvironmentAtari.jl.svg?branch=master)](https://travis-ci.com/JuliaReinforcementLearning/ReinforcementLearningEnvironmentAtari.jl)
 
